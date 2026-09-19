@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
+
+  --color-ink: #16211d;
+  --color-ink-soft: #3c473f;
+
+  --color-brand-50: #eaf3ef;
+  --color-brand-100: #cfe4db;
+  --color-brand-300: #7fae97;
+  --color-brand-500: #3a7259;
+  --color-brand-600: #235a43;
+  --color-brand-700: #1a4d39;
+  --color-brand-800: #123a2a;
+  --color-brand-900: #0f3d2e;
+
+  --color-amber-accent: #e2a33d;
+  --color-amber-accent-dark: #c7862a;
+
+  --color-bg: #faf8f4;
+  --color-surface: #ffffff;
+  --color-line: #e7e2d8;
+
+  --color-muted: #7a7367;
+
+  --color-success: #2f7a5c;
+  --color-danger: #bf4a3a;
+  --color-warning: #c7862a;
+
+  --radius-card: 0.875rem;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+::selection {
+  background-color: var(--color-amber-accent);
+  color: var(--color-ink);
+}
+
+/* focus visibility, kept subtle but always present */
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* thin scrollbars for dashboard tables */
+.scroll-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 999px; }
