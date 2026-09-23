@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Upload } from 'lucide-react'
+import { Upload, Clock, MapPin, LocateFixed } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useMyStore, useStoreMutations } from '@/features/stores/hooks'
 import { supabase } from '@/lib/supabase'
 import { STORAGE_BUCKETS } from '@/constants'
+import { getCurrentPosition } from '@/utils/geo'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Card } from '@/components/ui/primitives'
@@ -23,6 +24,16 @@ export default function StoreProfilePage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
 
+  const [hasHours, setHasHours] = useState(false)
+  const [opensAt, setOpensAt] = useState('10:00')
+  const [closesAt, setClosesAt] = useState('23:00')
+
+  const [hasServiceArea, setHasServiceArea] = useState(false)
+  const [latitude, setLatitude] = useState<number | null>(null)
+  const [longitude, setLongitude] = useState<number | null>(null)
+  const [serviceRadiusKm, setServiceRadiusKm] = useState('10')
+  const [locating, setLocating] = useState(false)
+
   useEffect(() => {
     if (store) {
       setName(store.name)
@@ -31,6 +42,15 @@ export default function StoreProfilePage() {
       setAddress(store.address ?? '')
       setDeliveryFee(String(store.delivery_fee))
       setImageUrl(store.image_url)
+
+      setHasHours(Boolean(store.opens_at && store.closes_at))
+      if (store.opens_at) setOpensAt(store.opens_at.slice(0, 5))
+      if (store.closes_at) setClosesAt(store.closes_at.slice(0, 5))
+
+      setHasServiceArea(Boolean(store.latitude && store.longitude && store.service_radius_km))
+      setLatitude(store.latitude)
+      setLongitude(store.longitude)
+      if (store.service_radius_km) setServiceRadiusKm(String(store.service_radius_km))
     }
   }, [store])
 
@@ -49,6 +69,20 @@ export default function StoreProfilePage() {
     }
   }
 
+  async function handleLocate() {
+    setLocating(true)
+    try {
+      const pos = await getCurrentPosition()
+      setLatitude(pos.coords.latitude)
+      setLongitude(pos.coords.longitude)
+      toast.success('تم تحديد موقع المتجر')
+    } catch {
+      toast.error('تعذر تحديد الموقع، تأكد من السماح بالوصول للموقع من المتصفح')
+    } finally {
+      setLocating(false)
+    }
+  }
+
   async function handleSave() {
     if (!store) return
     const feeNum = Number(deliveryFee)
@@ -56,10 +90,36 @@ export default function StoreProfilePage() {
       toast.error('يرجى إدخال رسوم توصيل صحيحة (رقم أكبر من أو يساوي صفر)')
       return
     }
+    if (hasHours && (!opensAt || !closesAt)) {
+      toast.error('يرجى تحديد وقتي الفتح والغلق، أو إلغاء تفعيل مواعيد العمل')
+      return
+    }
+    const radiusNum = Number(serviceRadiusKm)
+    if (hasServiceArea && (!latitude || !longitude)) {
+      toast.error('يرجى تحديد موقع المتجر أولًا لتفعيل منطقة الخدمة')
+      return
+    }
+    if (hasServiceArea && (!radiusNum || radiusNum <= 0)) {
+      toast.error('يرجى إدخال نطاق خدمة صحيح (كم) أكبر من صفر')
+      return
+    }
+
     try {
       await update.mutateAsync({
         id: store.id,
-        payload: { name, description, phone, address, image_url: imageUrl, delivery_fee: feeNum },
+        payload: {
+          name,
+          description,
+          phone,
+          address,
+          image_url: imageUrl,
+          delivery_fee: feeNum,
+          opens_at: hasHours ? opensAt : null,
+          closes_at: hasHours ? closesAt : null,
+          latitude: hasServiceArea ? latitude : null,
+          longitude: hasServiceArea ? longitude : null,
+          service_radius_km: hasServiceArea ? radiusNum : null,
+        },
       })
       toast.success('تم حفظ بيانات المتجر')
     } catch (err) {
@@ -99,10 +159,63 @@ export default function StoreProfilePage() {
           onChange={(e) => setDeliveryFee(e.target.value)}
           hint="الرسوم التي يدفعها العميل مقابل توصيل الطلب من متجرك"
         />
-        <Button onClick={handleSave} loading={update.isPending} className="self-start">
-          حفظ التغييرات
-        </Button>
       </Card>
+
+      <Card className="flex flex-col gap-4 p-5">
+        <label className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <Clock size={16} className="text-brand-700" /> مواعيد العمل
+          </span>
+          <input type="checkbox" checked={hasHours} onChange={(e) => setHasHours(e.target.checked)} className="size-5 accent-brand-700" />
+        </label>
+        {hasHours ? (
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="وقت الفتح" type="time" value={opensAt} onChange={(e) => setOpensAt(e.target.value)} />
+            <Input label="وقت الغلق" type="time" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} />
+          </div>
+        ) : (
+          <p className="text-xs text-muted">المتجر مفتوح طوال الوقت حاليًا (بدون مواعيد محددة).</p>
+        )}
+      </Card>
+
+      <Card className="flex flex-col gap-4 p-5">
+        <label className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <MapPin size={16} className="text-brand-700" /> منطقة خدمة التوصيل
+          </span>
+          <input
+            type="checkbox"
+            checked={hasServiceArea}
+            onChange={(e) => setHasServiceArea(e.target.checked)}
+            className="size-5 accent-brand-700"
+          />
+        </label>
+        {hasServiceArea ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-muted">
+              حدد موقع متجرك ثم نطاق الخدمة بالكيلومتر — أي عميل خارج هذا النطاق سيتم تنبيهه أنه خارج منطقة التوصيل قبل إتمام الطلب.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={handleLocate} loading={locating} className="self-start">
+              <LocateFixed size={15} /> {latitude && longitude ? 'تحديث موقع المتجر' : 'تحديد موقع المتجر الحالي'}
+            </Button>
+            {latitude && longitude && <p className="text-xs text-success">✓ تم تحديد موقع المتجر</p>}
+            <Input
+              label="نطاق الخدمة (كم)"
+              type="number"
+              min="0.1"
+              step="0.1"
+              value={serviceRadiusKm}
+              onChange={(e) => setServiceRadiusKm(e.target.value)}
+            />
+          </div>
+        ) : (
+          <p className="text-xs text-muted">لا يوجد تقييد جغرافي حاليًا — المتجر يستقبل طلبات من أي مكان.</p>
+        )}
+      </Card>
+
+      <Button onClick={handleSave} loading={update.isPending} className="self-start">
+        حفظ كل التغييرات
+      </Button>
 
       <ChangePasswordCard />
     </div>

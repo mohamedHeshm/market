@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MapPin, Trash2, Star, Plus } from 'lucide-react'
+import { MapPin, Trash2, Star, Plus, LocateFixed } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useAddresses, useAddressMutations } from '@/features/users/hooks'
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { EmptyState } from '@/components/common/States'
 import { ConfirmDialog } from '@/components/ui/Dialog'
+import { getCurrentPosition } from '@/utils/geo'
 
 export default function AddressesPage() {
   const { session } = useAuth()
@@ -17,14 +18,40 @@ export default function AddressesPage() {
   const [title, setTitle] = useState('')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
+  const [latitude, setLatitude] = useState<number | null>(null)
+  const [longitude, setLongitude] = useState<number | null>(null)
+  const [locating, setLocating] = useState(false)
   const [toDelete, setToDelete] = useState<string | null>(null)
+
+  async function handleLocate() {
+    setLocating(true)
+    try {
+      const pos = await getCurrentPosition()
+      setLatitude(pos.coords.latitude)
+      setLongitude(pos.coords.longitude)
+      toast.success('تم تحديد موقعك — سيساعد هذا في التأكد من أن العنوان داخل نطاق خدمة المتجر')
+    } catch {
+      toast.error('تعذر تحديد الموقع، تأكد من السماح بالوصول للموقع من المتصفح')
+    } finally {
+      setLocating(false)
+    }
+  }
 
   async function handleAdd() {
     if (!address.trim()) return
-    await create.mutateAsync({ title: title || undefined, address, phone: phone || undefined, is_default: (addresses?.length ?? 0) === 0 })
+    await create.mutateAsync({
+      title: title || undefined,
+      address,
+      phone: phone || undefined,
+      latitude,
+      longitude,
+      is_default: (addresses?.length ?? 0) === 0,
+    })
     setTitle('')
     setAddress('')
     setPhone('')
+    setLatitude(null)
+    setLongitude(null)
     setShowForm(false)
     toast.success('تم إضافة العنوان')
   }
@@ -47,6 +74,12 @@ export default function AddressesPage() {
           <Input label="اسم العنوان (اختياري)" placeholder="المنزل، العمل..." value={title} onChange={(e) => setTitle(e.target.value)} />
           <Textarea label="العنوان بالتفصيل" required value={address} onChange={(e) => setAddress(e.target.value)} />
           <Input label="هاتف التوصيل (اختياري)" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <div>
+            <Button type="button" variant="outline" size="sm" onClick={handleLocate} loading={locating}>
+              <LocateFixed size={15} /> {latitude && longitude ? 'تم تحديد موقعك ✓' : 'تحديد موقعي الحالي'}
+            </Button>
+            <p className="mt-1.5 text-xs text-muted">اختياري، لكنه يساعد في التأكد من أن عنوانك داخل نطاق خدمة المتجر عند الطلب.</p>
+          </div>
           <Button onClick={handleAdd} loading={create.isPending}>
             حفظ العنوان
           </Button>

@@ -45,6 +45,15 @@ export interface Store {
   address: string | null
   /** Delivery fee this store charges, set by the store owner (or admin). */
   delivery_fee: number
+  /** Daily opening time, e.g. "10:00:00". Null (with closes_at) means no schedule set — always open. */
+  opens_at: string | null
+  /** Daily closing time. Can be earlier than opens_at for hours spanning past midnight. */
+  closes_at: string | null
+  /** Store's own location, set by the store owner, used for the delivery service area. */
+  latitude: number | null
+  longitude: number | null
+  /** Delivery service radius around the store's location, in kilometers. Null means no area restriction. */
+  service_radius_km: number | null
   is_active: boolean
   created_at: string
   updated_at: string

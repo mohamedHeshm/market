@@ -33,6 +33,14 @@ export function useStoreRating(storeId?: string) {
   })
 }
 
+export function useStoreSales(storeId?: string) {
+  return useQuery({
+    queryKey: ['stores', storeId, 'sales'],
+    queryFn: () => api.getStoreSales(storeId as string),
+    enabled: Boolean(storeId),
+  })
+}
+
 export function useStoreMutations() {
   const qc = useQueryClient()
   const invalidate = () => qc.invalidateQueries({ queryKey: ['stores'] })

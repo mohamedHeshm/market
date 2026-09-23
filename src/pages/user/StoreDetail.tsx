@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { Store as StoreIcon, Phone, MapPin } from 'lucide-react'
+import { Store as StoreIcon, Phone, MapPin, Clock } from 'lucide-react'
 import { useStore, useStoreRating } from '@/features/stores/hooks'
 import { useProducts } from '@/features/products/hooks'
 import { useStoreReviews } from '@/features/reviews/hooks'
@@ -7,6 +7,8 @@ import { RatingStars } from '@/components/common/RatingStars'
 import { ProductCard } from '@/components/common/ProductCard'
 import { ProductCardSkeleton, EmptyState, ErrorState } from '@/components/common/States'
 import { Skeleton } from '@/components/common/States'
+import { Badge } from '@/components/ui/primitives'
+import { isStoreOpenNow, formatTime } from '@/utils/hours'
 
 export default function StoreDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -42,7 +44,14 @@ export default function StoreDetailPage() {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-bold text-ink">{store.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-lg font-bold text-ink">{store.name}</h1>
+              {store.opens_at && store.closes_at && (
+                <Badge tone={isStoreOpenNow(store) ? 'success' : 'danger'}>
+                  {isStoreOpenNow(store) ? 'مفتوح الآن' : 'مغلق الآن'}
+                </Badge>
+              )}
+            </div>
             {store.description && <p className="mt-0.5 line-clamp-2 text-sm text-muted">{store.description}</p>}
             {rating && rating.count > 0 && (
               <div className="mt-1.5 flex items-center gap-1.5">
@@ -65,8 +74,19 @@ export default function StoreDetailPage() {
               <MapPin size={14} /> {store.address}
             </span>
           )}
+          {store.opens_at && store.closes_at && (
+            <span className="flex items-center gap-1.5">
+              <Clock size={14} /> {formatTime(store.opens_at)} - {formatTime(store.closes_at)}
+            </span>
+          )}
         </div>
       </div>
+
+      {store.opens_at && store.closes_at && !isStoreOpenNow(store) && (
+        <div className="rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm font-medium text-danger">
+          هذا المتجر مغلق حاليًا. مواعيد العمل: {formatTime(store.opens_at)} - {formatTime(store.closes_at)}
+        </div>
+      )}
 
       <section>
         <h2 className="mb-3 text-base font-semibold text-ink">المنتجات</h2>
