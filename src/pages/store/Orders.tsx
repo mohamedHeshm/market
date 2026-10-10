@@ -1,13 +1,16 @@
+import { useState } from 'react'
 import { toast } from 'sonner'
-import { ClipboardList, Banknote, Clock } from 'lucide-react'
+import { ClipboardList, Banknote, Clock, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useMyStore } from '@/features/stores/hooks'
 import { useStoreOrders, useAdvanceOrderStatus } from '@/features/orders/hooks'
 import { Badge, Card } from '@/components/ui/primitives'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/common/States'
+import { OrderItemsList } from '@/components/common/OrderItemsList'
 import { ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import { formatCurrency } from '@/utils/pricing'
+import { cn } from '@/lib/cn'
 import type { Order, OrderStatus, PaymentMethod } from '@/types'
 
 const simpleNextActions: Partial<Record<OrderStatus, Array<{ label: string; status: OrderStatus; danger?: boolean }>>> = {
@@ -20,6 +23,7 @@ export default function StoreOrdersPage() {
   const { data: store } = useMyStore(session?.user.id)
   const { data: orders, isLoading } = useStoreOrders(store?.id)
   const advance = useAdvanceOrderStatus()
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   async function handleAdvance(orderId: string, status: OrderStatus) {
     try {
@@ -44,6 +48,7 @@ export default function StoreOrdersPage() {
             // can accept them; Cash on Delivery is never gated this way.
             const awaitingPaymentVerification =
               order.status === 'PENDING' && order.payment_method === 'CASH_WALLET' && order.payment_status !== 'PAID'
+            const isExpanded = expandedId === order.id
 
             return (
               <Card key={order.id} className="flex flex-col gap-3 p-4">
@@ -54,16 +59,33 @@ export default function StoreOrdersPage() {
                   </div>
                   <Badge tone="brand">{ORDER_STATUS_LABELS[order.status]}</Badge>
                 </div>
+
                 <div className="flex items-center justify-between text-sm text-ink-soft">
-                  <span>
-                    {(order as unknown as { items: Array<{ id: string; quantity: number }> }).items?.length ?? 0} منتج ·{' '}
-                    {formatCurrency(order.total)}
-                  </span>
+                  <span className="font-semibold text-ink">{formatCurrency(order.total)}</span>
                   <span className="flex items-center gap-1.5 text-xs">
                     <Banknote size={13} />
                     {PAYMENT_METHOD_LABELS[order.payment_method as PaymentMethod] ?? '—'}
                   </span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(isExpanded ? null : order.id)}
+                  aria-expanded={isExpanded}
+                  className="flex items-center justify-between rounded-lg bg-bg px-3 py-2.5 text-sm font-medium text-brand-800"
+                >
+                  <span>{isExpanded ? 'إخفاء تفاصيل الطلب' : 'عرض تفاصيل الطلب والمنتجات'}</span>
+                  <ChevronDown size={16} className={cn('transition-transform', isExpanded && 'rotate-180')} />
+                </button>
+
+                {isExpanded && (
+                  <OrderItemsList
+                    orderId={order.id}
+                    subtotal={order.subtotal}
+                    deliveryFee={order.delivery_fee}
+                    total={order.total}
+                  />
+                )}
 
                 {awaitingPaymentVerification ? (
                   <div className="flex flex-col gap-2">

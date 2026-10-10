@@ -46,7 +46,7 @@ export async function getOrder(orderId: string) {
 export async function listStoreOrders(storeId: string, status?: OrderStatus) {
   let query = supabase
     .from('orders_view')
-    .select('*, items:order_items(*)')
+    .select('*')
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
   if (status) query = query.eq('status', status)
@@ -84,4 +84,36 @@ export async function submitPaymentProof(orderId: string, transactionReference: 
   })
   if (error) throw error
   return data as Order
+}
+
+export interface OrderItemDetail {
+  id: string
+  order_id: string
+  product_id: string
+  quantity: number
+  price: number
+  original_price: number
+  total: number
+  product_name: string | null
+  product_image_url: string | null
+  product: { name: string; image_url: string | null } | null
+}
+
+/**
+ * Every line of one order, straight from order_items (the source of truth
+ * for quantity and the price charged), joined to products only as a
+ * fallback for old rows that predate the name/image snapshot columns.
+ * RLS decides who may read them: the order's customer, the store that owns
+ * the order, the assigned courier, and admins — no one else.
+ */
+export async function listOrderItems(orderId: string) {
+  const { data, error } = await supabase
+    .from('order_items')
+    .select(
+      'id, order_id, product_id, quantity, price, original_price, total, product_name, product_image_url, product:products(name, image_url)'
+    )
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []) as unknown as OrderItemDetail[]
 }

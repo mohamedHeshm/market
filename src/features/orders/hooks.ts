@@ -79,6 +79,14 @@ export function useStoreOrders(storeId?: string, status?: OrderStatus) {
   })
 }
 
+export function useOrderItems(orderId?: string) {
+  return useQuery({
+    queryKey: ['orders', orderId, 'items'],
+    queryFn: () => api.listOrderItems(orderId as string),
+    enabled: Boolean(orderId),
+  })
+}
+
 export function useAdminOrders(status?: OrderStatus) {
   return useQuery({
     queryKey: ['orders', 'admin', status],

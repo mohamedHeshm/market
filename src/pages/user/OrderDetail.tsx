@@ -43,7 +43,7 @@ export default function OrderDetailPage() {
 
   const store = (order as unknown as { store: { name: string; phone?: string } | null }).store
   const items = (order as unknown as {
-    items: Array<{ id: string; quantity: number; price: number; original_price: number; total: number; product?: { name: string } }>
+    items: Array<{ id: string; quantity: number; price: number; original_price: number; total: number; product_name?: string | null; product?: { name: string } }>
   }).items ?? []
 
   async function handleSubmitProof() {
@@ -154,7 +154,7 @@ export default function OrderDetailPage() {
             return (
               <div key={item.id} className="flex items-center justify-between text-sm">
                 <span className="text-ink-soft">
-                  {item.product?.name ?? 'منتج'} × {item.quantity}
+                  {item.product_name ?? item.product?.name ?? 'منتج'} × {item.quantity}
                 </span>
                 <span className="flex items-center gap-2">
                   {hasDiscount && (

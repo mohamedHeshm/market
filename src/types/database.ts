@@ -126,6 +126,10 @@ export interface OrderItem {
   /** Unit price before discount at order time. Equals `price` when no discount applied. */
   original_price: number
   total: number
+  /** Product name at the time the order was placed (historical snapshot). */
+  product_name: string | null
+  /** Product image at the time the order was placed (historical snapshot). */
+  product_image_url: string | null
   created_at: string
 }
 
